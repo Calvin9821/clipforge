@@ -57,7 +57,7 @@ export async function getCurrentUser() {
   if (!token) return null;
   const id = createHash("sha256").update(token).digest("hex");
   const now = new Date();
-  const rows = await db.select({ user: users }).from(sessions).innerJoin(users, eq(users.id, sessions.userId)).where(and(eq(sessions.id, id), gt(sessions.expiresAt, now))).limit(1);
+  const rows = await db.select({ user: users }).from(sessions).innerJoin(users, eq(users.id, sessions.userId)).where(and(eq(sessions.id, id), gt(sessions.expiresAt, now), eq(users.disabled, false))).limit(1);
   return rows[0]?.user ?? null;
 }
 

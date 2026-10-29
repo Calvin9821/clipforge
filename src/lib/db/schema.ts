@@ -382,6 +382,7 @@ export const users = sqliteTable("users", {
   email: text("email").notNull(),
   passwordHash: text("password_hash").notNull(),
   role: text("role", { enum: ["user", "admin"] }).notNull().default("user"),
+  disabled: integer("disabled", { mode: "boolean" }).notNull().default(false),
   createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
   updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
 }, (table) => [uniqueIndex("users_email_unique").on(table.email)]);
@@ -417,6 +418,20 @@ export const subscriptionPlans = sqliteTable("subscription_plans", {
   currency: text("currency").notNull().default("USD"),
   active: integer("active", { mode: "boolean" }).notNull().default(true),
 });
+
+export const auditLogs = sqliteTable("audit_logs", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  actorUserId: text("actor_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  action: text("action").notNull(),
+  targetType: text("target_type").notNull(),
+  targetId: text("target_id").notNull(),
+  before: text("before", { mode: "json" }).$type<Record<string, unknown>>(),
+  after: text("after", { mode: "json" }).$type<Record<string, unknown>>(),
+  reason: text("reason"),
+  ip: text("ip"),
+  userAgent: text("user_agent"),
+  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+}, (table) => [index("audit_logs_created_at_idx").on(table.createdAt), index("audit_logs_actor_idx").on(table.actorUserId)]);
 
 export const subscriptions = sqliteTable("subscriptions", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
