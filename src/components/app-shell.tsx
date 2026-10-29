@@ -156,8 +156,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <div className="flex min-h-screen">
       {/* Desktop sidebar */}
       <aside className={`sticky top-0 hidden h-screen shrink-0 flex-col border-r border-border/50 bg-background/60 transition-[width] md:flex ${collapsed ? "w-14" : "w-56"}`}>
-        <Link href="/start" aria-label={t("home")} className={`flex items-center pb-4 pt-5 ${collapsed ? "justify-center px-0" : "px-4"}`}>
-          <span className="sr-only">{t("home")}</span>
+        <Link href="/start" aria-label={t("home")} className={`flex items-center gap-2.5 pb-4 pt-5 ${collapsed ? "justify-center px-0" : "px-4"}`}>
+          <img src="/icon.svg" alt="" width={30} height={30} className="rounded-[9px]" />
+          {!collapsed && <span className="text-base font-bold tracking-tight">ClipForge</span>}
         </Link>
         <nav className={`flex-1 space-y-5 overflow-y-auto py-2 ${collapsed ? "px-2" : "px-3"}`}>
           {sections.map((section) => (
@@ -233,7 +234,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-50 flex h-12 items-center justify-between border-b border-border/50 bg-background/80 px-4 backdrop-blur-xl md:hidden">
           <Link href="/start" aria-label={t("home")} className="flex items-center gap-2">
-            <span className="sr-only">{t("home")}</span>
+            <img src="/icon.svg" alt="" width={24} height={24} className="rounded-[7px]" />
+            <span className="text-sm font-bold tracking-tight">ClipForge</span>
           </Link>
           <div className="flex items-center gap-1">
             <TaskCenter collapsed />
