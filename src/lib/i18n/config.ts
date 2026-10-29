@@ -1,9 +1,9 @@
-/** Locale configuration: Chinese is the default/primary language; English is the globally switchable alternative */
+/** Locale configuration: English is the default/primary language; Chinese remains available in the switcher. */
 export const LOCALES = ["zh", "en"] as const;
 export type Locale = (typeof LOCALES)[number];
 
-/** Default locale: Chinese first */
-export const DEFAULT_LOCALE: Locale = "zh";
+/** Default locale for new users and SSR-rendered pages. */
+export const DEFAULT_LOCALE: Locale = "en";
 
 /** Labels shown in the language switcher */
 export const LOCALE_LABELS: Record<Locale, string> = {

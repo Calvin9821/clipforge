@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { createProvider } from "@/lib/providers";
 import { toRemoteUsableImage } from "@/lib/remote-image";
 import { apiError, errText } from "@/lib/api-error";
+import { getCurrentUser } from "@/lib/auth";
+import { consumeCredit, refundCredit } from "@/lib/billing";
 
 // AI image generation
 export async function POST(req: NextRequest) {
@@ -15,6 +17,12 @@ export async function POST(req: NextRequest) {
   if (!apiKey) {
     return apiError(req, "缺少 API Key，请先在设置中配置对应平台", "Missing API Key, please configure the corresponding platform in settings first");
   }
+
+  // Self-hosted installs remain unlimited. Hosted users reserve one credit before
+  // calling a paid provider and receive it back when the provider fails.
+  const currentUser = await getCurrentUser();
+  const reservation = currentUser ? await consumeCredit(currentUser.id, { reason: "image_generation" }) : null;
+  if (reservation && !reservation.ok) return apiError(req, "额度不足，请升级套餐", "You have no credits left; please upgrade your plan", 402);
 
   try {
     const provider = createProvider({ name: providerName, apiKey, baseUrl });
@@ -37,6 +45,7 @@ export async function POST(req: NextRequest) {
     });
     return NextResponse.json(result);
   } catch (error) {
+    if (currentUser && reservation?.ok) await refundCredit(currentUser.id, { reason: "image_generation_failed_refund" });
     console.error("生图失败:", error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : errText(req, "生图失败", "Image generation failed") },

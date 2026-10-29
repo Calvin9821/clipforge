@@ -208,6 +208,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <NavIcon name="gear" />
             {!collapsed && t("settings")}
           </Link>
+          <Link
+            href="/account/billing"
+            className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors ${pathname?.startsWith("/account") ? "bg-primary/15 font-medium text-primary" : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"}`}
+          >
+            <span className="text-base" aria-hidden="true">¥</span>
+            {!collapsed && "账户与账单"}
+          </Link>
           <div className={`flex items-center ${collapsed ? "justify-center" : "justify-between px-1.5"}`}>
             {!collapsed && <LanguageToggle />}
             <button
@@ -254,6 +261,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <DropdownMenuItem onClick={() => router.push("/settings")}>
                   {t("settings")}
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => router.push("/account/billing")}>账户与账单</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>

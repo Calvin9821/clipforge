@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, uniqueIndex, index } from "drizzle-orm/sqlite-core";
 import type {
   CreativeIntent,
   ProductionSnapshot,
@@ -373,6 +373,94 @@ export const settings = sqliteTable("settings", {
   key: text("key").primaryKey(),
   value: text("value", { mode: "json" }),
   updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+});
+
+// Hosted subscription layer. These tables are additive so the existing self-hosted
+// SQLite workflow keeps working while the SaaS surface gains account and billing state.
+export const users = sqliteTable("users", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  email: text("email").notNull(),
+  passwordHash: text("password_hash").notNull(),
+  role: text("role", { enum: ["user", "admin"] }).notNull().default("user"),
+  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+}, (table) => [uniqueIndex("users_email_unique").on(table.email)]);
+
+export const workspaces = sqliteTable("workspaces", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  name: text("name").notNull(),
+  ownerId: text("owner_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+}, (table) => [index("workspaces_owner_id_idx").on(table.ownerId)]);
+
+export const workspaceMembers = sqliteTable("workspace_members", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  workspaceId: text("workspace_id").notNull().references(() => workspaces.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  role: text("role", { enum: ["owner", "admin", "member"] }).notNull().default("member"),
+  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+}, (table) => [uniqueIndex("workspace_members_unique").on(table.workspaceId, table.userId)]);
+
+export const sessions = sqliteTable("sessions", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  expiresAt: integer("expires_at", { mode: "timestamp" }).notNull(),
+  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+}, (table) => [index("sessions_user_id_idx").on(table.userId)]);
+
+export const subscriptionPlans = sqliteTable("subscription_plans", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  monthlyCredits: integer("monthly_credits").notNull(),
+  priceCents: integer("price_cents").notNull().default(0),
+  currency: text("currency").notNull().default("USD"),
+  active: integer("active", { mode: "boolean" }).notNull().default(true),
+});
+
+export const subscriptions = sqliteTable("subscriptions", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  planId: text("plan_id").notNull().references(() => subscriptionPlans.id),
+  provider: text("provider").notNull().default("manual"),
+  providerSubscriptionId: text("provider_subscription_id"),
+  status: text("status", { enum: ["trialing", "active", "past_due", "cancelled", "expired", "refunded"] }).notNull().default("trialing"),
+  currentPeriodStart: integer("current_period_start", { mode: "timestamp" }).notNull(),
+  currentPeriodEnd: integer("current_period_end", { mode: "timestamp" }).notNull(),
+  cancelAtPeriodEnd: integer("cancel_at_period_end", { mode: "boolean" }).notNull().default(false),
+  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+}, (table) => [index("subscriptions_user_id_idx").on(table.userId)]);
+
+export const billingOrders = sqliteTable("billing_orders", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  planId: text("plan_id").notNull().references(() => subscriptionPlans.id),
+  provider: text("provider").notNull(),
+  providerOrderId: text("provider_order_id"),
+  status: text("status", { enum: ["pending", "paid", "failed", "refunded", "partially_refunded"] }).notNull().default("pending"),
+  amountCents: integer("amount_cents").notNull(),
+  currency: text("currency").notNull(),
+  rawPayload: text("raw_payload", { mode: "json" }).$type<Record<string, unknown>>(),
+  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+}, (table) => [uniqueIndex("billing_provider_order_unique").on(table.provider, table.providerOrderId)]);
+
+export const creditLedger = sqliteTable("credit_ledger", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  projectId: text("project_id").references(() => projects.id, { onDelete: "set null" }),
+  generationId: text("generation_id"),
+  amount: integer("amount").notNull(),
+  reason: text("reason").notNull(),
+  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+}, (table) => [index("credit_ledger_user_id_idx").on(table.userId)]);
+
+export const webhookEvents = sqliteTable("webhook_events", {
+  id: text("id").primaryKey(),
+  provider: text("provider").notNull(),
+  eventType: text("event_type").notNull(),
+  processedAt: integer("processed_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
 });
 
 // ===== Type definitions =====
